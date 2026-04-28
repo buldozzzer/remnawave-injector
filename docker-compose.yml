@@ -1,0 +1,28 @@
+services:
+  remnawave-injector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: remnawave-injector
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3110:3110"
+
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+
+    networks:
+      - remnawave-network
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  remnawave-network:
+    name: remnawave-network
+    driver: bridge
+    external: true

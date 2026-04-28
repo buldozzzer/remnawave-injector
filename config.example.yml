@@ -1,0 +1,79 @@
+listen_host: "0.0.0.0"
+listen_port: 3110
+
+backend:
+  host: "remnawave-subscription-page"
+  port: 3010
+  ssl_insecure: true
+
+injection:
+  inject_js: false
+  inject_html: false
+
+  custom_js: |
+    <script> console.log('%c[Injector] Custom script loaded successfully', 'color: #00ff9d; font-weight: bold');
+    
+    window.addEventListener('load', () => {
+        console.log('Remnawave Subscription Page — injected by your config');
+        // Добавляй свой код здесь
+    }); </script>
+
+  custom_html: |
+    <div style="position:fixed;bottom:12px;right:12px;background:#0a0a0a;color:#00ff9d;padding:8px 12px;border-radius:6px;font-size:12px;z-index:99999;border:1px solid #00aa00;">
+      Injected by Remnawave Injector
+    </div>
+
+header_modifications:
+  #"X-Injected-By": "Remnawave-Injector-v2"
+  "X-Original-Host": "{original_host}"
+
+logging:
+  level: "INFO"
+  json_log: false
+  log_headers: true
+  important_headers:
+    - User-Agent
+    - Host
+    - Referer
+    - X-Forwarded-For
+    - Cookie
+
+subscription_modification:
+  enabled: true
+  
+  target_paths: 
+    - "/sub"
+    - "/subscription"
+    - "/api/sub"
+    - "/account"
+
+  base64:
+    enabled: true
+
+    enableed_replace: false
+    replacements:
+      - search: "old.server.com"
+        replace: "new.server.com"
+
+    enabled_apend: true
+    append_links:
+      - "hysteria2://03d46961-768e-4694-9f5c-b74d402a39c6@srv1.server.com:443?peer=srv1.server.com&insecure=0&sni=srv1.server.com&alpn=h3#🚀Hysteria"
+    
+    enabled_filtering: false
+    keep_if_contains:
+      - "RU"
+      - "NL"
+      - "DE"
+      - "Premium"
+
+    enabled_removing: false
+    remove_if_contains:
+      - "expired"
+      - "test"
+      - "debug"
+
+  json:
+    enabled: false
+    replacements:
+      - search: '"address": "oldip"'
+        replace: '"address": "newip"'

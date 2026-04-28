@@ -1,0 +1,80 @@
+# ================== Python ==================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env/
+.venv/
+
+# ================== IDE и редакторы ==================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ================== Logs ==================
+*.log
+logs/
+*.log.*
+
+# ================== mitmproxy ==================
+*.mitm
+traffic.mitm
+flow.dump
+dump.mitm
+
+# ================== Docker ==================
+docker-compose.override.yml
+
+# ================== Конфигурационные файлы с чувствительными данными ==================
+config.local.yml
+config.dev.yml
+config.prod.yml
+config.secret.yml
+
+# Если не хочешь коммитить основной конфиг (рекомендуется)
+config.yml
+
+# ================== Temporary files ==================
+*.tmp
+*.temp
+temp/
+
+# ================== macOS ==================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ================== Windows ==================
+ehthumbs.db
+Desktop.ini
+
+# ================== Прочие ==================
+*.bak
+*.backup
+.sixth
