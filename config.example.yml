@@ -47,10 +47,17 @@ subscription_modification:
     - "/api/sub"
     - "/account"
 
+  user_agent_exceptions:
+    enabled: true
+    exclude:
+
+    exclude_regex:
+      - "clash-verge.*"
+
   base64:
     enabled: true
 
-    enableed_replace: false
+    enabled_replace: false
     replacements:
       - search: "old.server.com"
         replace: "new.server.com"

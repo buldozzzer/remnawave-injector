@@ -1,22 +1,24 @@
 import yaml
 import sys
 from pathlib import Path
+import re
 
 import base64
 import json
 
-from mitmproxy import http, options
+from mitmproxy import http
 from mitmproxy.tools.main import mitmdump
 from logger import setup_structlog, logger
 
 CONFIG_PATH = Path("config.yml")
 
 if not CONFIG_PATH.exists():
-    logger.error(f"❌ Ошибка: Файл конфигурации {CONFIG_PATH} не найден!")
+    logger.error(f"Ошибка", msg=f"Файл конфигурации {CONFIG_PATH} не найден")
     sys.exit(1)
 
 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
+
 
 LISTEN_HOST = config.get("listen_host", "0.0.0.0")
 LISTEN_PORT = config.get("listen_port", 8081)
@@ -24,8 +26,7 @@ LISTEN_PORT = config.get("listen_port", 8081)
 backend = config.get("backend", {})
 BACKEND_HOST = backend.get("host", "remnawave-subscription-page")
 BACKEND_PORT = backend.get("port", 443)
-SSL_INSECURE = backend.get("ssl_insecure", True)
-KEEP_HOST_HEADER = backend.get("keep_host_header", True)
+
 
 injection = config.get("injection", {})
 INJECT_JS = injection.get("inject_js", True)
@@ -33,18 +34,58 @@ INJECT_HTML = injection.get("inject_html", False)
 CUSTOM_JS = injection.get("custom_js", "")
 CUSTOM_HTML = injection.get("custom_html", "")
 
+
+sub_config = config.get("subscription_modification", {})
+SUB_MOD_ENABLED = sub_config.get("enabled", True)
+TARGET_PATHS = sub_config.get("target_paths", ["/sub", "/subscription", "/api/sub"])
+
+
+base64_config = sub_config.get("base64", {})
+json_config = sub_config.get("json", {})
+
+
+ua_exceptions = sub_config.get("user_agent_exceptions", {})
+
+EXCLUDE_UA_ENABLED = ua_exceptions.get("enabled", True)
+EXCLUDE_UA_REGEXES = []
+EXCLUDE_UA_STRINGS = ua_exceptions.get("exclude", [])
+
+for pattern in ua_exceptions.get("exclude_regex", []):
+    try:
+        EXCLUDE_UA_REGEXES.append(re.compile(pattern, re.IGNORECASE))
+    except re.error as e:
+        logger.error(f"Неверное регулярное выражение: {pattern}", error=str(e))
+
+
 header_mods = config.get("header_modifications", {})
 LOG_HEADERS = config.get("logging", {}).get("log_headers", True)
 IMPORTANT_HEADERS = config.get("logging", {}).get("important_headers", [])
 LOG_LEVEL = config.get("logging", {}).get("level", "INFO")
 JSON_LOG = config.get("logging", {}).get("json_log", False)
 
-sub_config = config.get("subscription_modification", {})
-SUB_MOD_ENABLED = sub_config.get("enabled", True)
-TARGET_PATHS = sub_config.get("target_paths", ["/sub", "/subscription", "/api/sub"])
 
-base64_config = sub_config.get("base64", {})
-json_config = sub_config.get("json", {})
+def should_skip_subscription_modification(flow: http.HTTPFlow) -> bool:
+    if not EXCLUDE_UA_ENABLED:
+        return False
+
+    user_agent = flow.request.headers.get("User-Agent", "")
+    if not user_agent:
+        return False
+
+    for regex in EXCLUDE_UA_REGEXES:
+        if regex.search(user_agent):
+            logger.info("[SUB] Модификация пропущена по regex", 
+                       user_agent=user_agent[:100], 
+                       pattern=regex.pattern)
+            return True
+
+    for excluded in EXCLUDE_UA_STRINGS:
+        if excluded and excluded.lower() in user_agent.lower():
+            logger.info("[SUB] Модификация пропущена по строке", 
+                       user_agent=user_agent[:100])
+            return True
+
+    return False
 
 
 def is_subscription_response(flow: http.HTTPFlow) -> bool:
@@ -91,7 +132,8 @@ def inject_into_html(flow: http.HTTPFlow):
 
     if modified:
         flow.response.content = content.encode('utf-8')
-        flow.response.headers["Content-Length"] = str(len(flow.response.content))
+        if "Content-Length" in flow.response.headers:
+            flow.response.headers["Content-Length"] = str(len(flow.response.content))
 
 
 def modify_base64_subscription(content: bytes) -> bytes:
@@ -101,22 +143,22 @@ def modify_base64_subscription(content: bytes) -> bytes:
     try:
         decoded = base64.b64decode(content).decode('utf-8')
         lines = [line.strip() for line in decoded.strip().split('\n') if line.strip()]
-        logger.debug("Servres", count=len(lines))
 
         if base64_config.get("enabled_filtering", False):
             if keep_keywords := [k.lower() for k in base64_config.get("keep_if_contains", [])]:
                 lines = [line for line in lines if any(kw in line.lower() for kw in keep_keywords)]
 
-
             if base64_config.get("enabled_removing", False):
                 if remove_keywords := [k.lower() for k in base64_config.get("remove_if_contains", [])]:
                     lines = [line for line in lines if not any(kw in line.lower() for kw in remove_keywords)]
 
-        if base64_config.get("enableed_replace", False):
+        if base64_config.get("enabled_replace", False):
             for rule in base64_config.get("replacements", []):
-                lines = [line.replace(rule.get("search", ""), rule.get("replace", "")) for line in lines]
+                search = rule.get("search", "")
+                replace = rule.get("replace", "")
+                lines = [line.replace(search, replace) for line in lines]
 
-        if base64_config.get("enabled_apend", True):
+        if base64_config.get("enabled_append", True):         # исправил опечатку
             for link in base64_config.get("append_links", []):
                 if link and link.strip():
                     lines.append(link.strip())
@@ -125,7 +167,7 @@ def modify_base64_subscription(content: bytes) -> bytes:
         return base64.b64encode(new_content)
 
     except Exception as e:
-        logger.error("Ошибка модификации Base64", error=e)
+        logger.error("Ошибка модификации Base64", error=str(e))
         return content
 
 
@@ -139,7 +181,7 @@ def modify_json_subscription(content: bytes) -> bytes:
             text = text.replace(rule.get("search", ""), rule.get("replace", ""))
         return text.encode('utf-8')
     except Exception as e:
-        logger.error("Ошибка модификации JSON", error=e)
+        logger.error("Ошибка модификации JSON", error=str(e))
         return content
 
 
@@ -147,12 +189,17 @@ def modify_subscription(flow: http.HTTPFlow):
     if not SUB_MOD_ENABLED or not is_subscription_response(flow):
         return
 
+    if should_skip_subscription_modification(flow):
+        ua = flow.request.headers.get("User-Agent", "")[:120]
+        logger.info("[SUB] Модификация пропущена по User-Agent", user_agent=ua)
+        return
+
     original_size = len(flow.response.content or b'')
     content_type = flow.response.headers.get("content-type", "").lower()
 
     if "application/json" in content_type:
         flow.response.content = modify_json_subscription(flow.response.content)
-        logger.info("[SUB] JSON  модифицирована", orig_len=original_size, new_len=len(flow.response.content))
+        logger.info("[SUB] JSON модифицирована", orig_len=original_size, new_len=len(flow.response.content))
     else:
         flow.response.content = modify_base64_subscription(flow.response.content)
         logger.info("[SUB] Base64 модифицирована", orig_len=original_size, new_len=len(flow.response.content))
@@ -179,16 +226,11 @@ def apply_header_modifications(flow: http.HTTPFlow):
 
 
 def fix_headers(flow: http.HTTPFlow):
-    if not flow.response:
-        return
-    
-    if flow.response.raw_content is None:
+    if not flow.response or flow.response.raw_content is None:
         return
 
     if flow.response.headers.get("Transfer-Encoding", "").lower() == "chunked":
         flow.response.headers.pop("Content-Length", None)
-    
-
     elif flow.response.content is not None:
         flow.response.headers["Content-Length"] = str(len(flow.response.content))
         flow.response.headers.pop("Transfer-Encoding", None)
@@ -215,9 +257,7 @@ def response(flow: http.HTTPFlow):
     logger.info(f"[← RESPONSE]", status_code=flow.response.status_code, url=flow.request.url)
 
     inject_into_html(flow)
-
     modify_subscription(flow)
-
     fix_headers(flow)
 
 
