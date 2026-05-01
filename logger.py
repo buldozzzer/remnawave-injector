@@ -12,7 +12,12 @@ from structlog.processors import (
     StackInfoRenderer,
     UnicodeDecoder,
 )
-from structlog.stdlib import LoggerFactory, ProcessorFormatter, BoundLogger, add_log_level
+from structlog.stdlib import (
+    LoggerFactory,
+    ProcessorFormatter,
+    BoundLogger,
+    add_log_level,
+)
 from structlog.stdlib import add_logger_name
 
 # Явный импорт
@@ -87,7 +92,15 @@ def setup_structlog(
     root_logger.addHandler(error_handler)
 
     # Убираем шум
-    for noisy in ["requests", "urllib3", "schedule", "sqlalchemy", "mitmproxy", "mitmproxy.addons", "asyncio"]:
+    for noisy in [
+        "requests",
+        "urllib3",
+        "schedule",
+        "sqlalchemy",
+        "mitmproxy",
+        "mitmproxy.addons",
+        "asyncio",
+    ]:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
     # Стартовое сообщение
