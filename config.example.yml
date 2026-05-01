@@ -39,6 +39,7 @@ logging:
     - Cookie
 
 subscription_modification:
+  min_size_bytes: 336
   enabled: true
   
   target_paths: 
