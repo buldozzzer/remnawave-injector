@@ -39,7 +39,8 @@ logging:
     - Cookie
 
 subscription_modification:
-  min_size_bytes: 336
+  expire_size_bytes: 336
+  limit_size_bytes: 324
   enabled: true
   
   target_paths: 

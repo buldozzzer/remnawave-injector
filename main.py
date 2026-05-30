@@ -37,7 +37,8 @@ CUSTOM_HTML = injection.get("custom_html", "")
 
 sub_config = config.get("subscription_modification", {})
 SUB_MOD_ENABLED = sub_config.get("enabled", True)
-MIN_SUBSCRIPTION_SIZE = sub_config.get("min_size_bytes", 336)
+EXPIRE_SUBSCRIPTION_SIZE = sub_config.get("expire_size_bytes", 336)
+LIMIT_SUBSCRIPTION_SIZE = sub_config.get("limit_size_bytes", 324)
 TARGET_PATHS = sub_config.get(
     "target_paths", ["/sub", "/subscription", "/api/sub", "/account"]
 )
@@ -218,11 +219,20 @@ def modify_subscription(flow: http.HTTPFlow):
     original_size = len(flow.response.content or b"")
     content_type = flow.response.headers.get("content-type", "").lower()
 
-    if original_size == MIN_SUBSCRIPTION_SIZE:
+    if original_size == EXPIRE_SUBSCRIPTION_SIZE:
         logger.info(
             "[SUB] Подписка просрочена",
             size=original_size,
-            min_size=MIN_SUBSCRIPTION_SIZE,
+            expire_size=EXPIRE_SUBSCRIPTION_SIZE,
+            url=flow.request.url,
+        )
+        return
+    
+    if original_size == LIMIT_SUBSCRIPTION_SIZE:
+        logger.info(
+            "[SUB] Достигнут лимит по трафику",
+            size=original_size,
+            limit_size=LIMIT_SUBSCRIPTION_SIZE,
             url=flow.request.url,
         )
         return
