@@ -68,6 +68,12 @@ subscription_modification:
     append_links:
       - "hysteria2://03d46961-768e-4694-9f5c-b74d402a39c6@srv1.server.com:443?peer=srv1.server.com&insecure=0&sni=srv1.server.com&alpn=h3#🚀Hysteria"
     
+    enabled_specific_inserts: true
+    specific_inserts:
+      - target: "UUID"
+        links: 
+          - "hysteria2://03d46961-768e-4694-9f5c-b74d402a39c6@srv1.server.com:443?peer=srv1.server.com&insecure=0&sni=srv1.server.com&alpn=h3#🚀Hysteria"
+
     enabled_filtering: false
     keep_if_contains:
       - "RU"

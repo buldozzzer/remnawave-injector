@@ -180,10 +180,19 @@ def modify_base64_subscription(content: bytes) -> bytes:
                 replace = rule.get("replace", "")
                 lines = [line.replace(search, replace) for line in lines]
 
-        if base64_config.get("enabled_append", True):  # исправил опечатку
+        if base64_config.get("enabled_append", True):
             for link in base64_config.get("append_links", []):
                 if link and link.strip():
                     lines.append(link.strip())
+        
+        if base64_config.get("enabled_specific_inserts", False): 
+            for insertion in base64_config.get("specific_inserts", []):
+                target = insertion.get("target", "")
+                if target in decoded:
+                    links = insertion.get("links", "")
+                    for link in links:
+                        lines.append(link.strip())
+            
 
         new_content = "\n".join(lines).encode("utf-8")
         return base64.b64encode(new_content)
