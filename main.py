@@ -185,17 +185,12 @@ def modify_base64_subscription(content: bytes) -> bytes:
                 if link and link.strip():
                     lines.append(link.strip())
         
-        enabled_specific_inserts = base64_config.get("enabled_specific_inserts", False)
-        
-        logger.debug("[modify_base64_subscription]", enabled_specific_inserts=enabled_specific_inserts)
         if base64_config.get("enabled_specific_inserts", False): 
             for insertion in base64_config.get("specific_inserts", []):
                 target = insertion.get("target", "")
-                logger.debug("[modify_base64_subscription]", target=target, decoded=decoded)
                 if target in decoded:
                     links = insertion.get("links", "")
                     for link in links:
-                        logger.debug("[modify_base64_subscription]", target=target, link=link)
                         lines.append(link.strip())
             
 
