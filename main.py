@@ -212,12 +212,24 @@ def modify_json_subscription(content: bytes) -> bytes:
             for rule in json_config.get("replacements", []):
                 text = text.replace(rule.get("search", ""), rule.get("replace", ""))
 
-        append_configs = json_config.get("append_configs", [])
-        if json_config.get("enabled_append", True) and append_configs:
-            if not isinstance(append_configs, list) or not all(
-                isinstance(item, dict) for item in append_configs
+        append_outbounds = json_config.get("append_outbounds", [])
+        if json_config.get("enabled_append", True) and append_outbounds:
+            if not isinstance(append_outbounds, list) or not all(
+                isinstance(item, dict) for item in append_outbounds
             ):
-                logger.error("[SUB] append_configs должен быть списком объектов")
+                logger.error("[SUB] append_outbounds должен быть списком объектов")
+                return text.encode("utf-8")
+
+            template = json_config.get("outbound_template")
+            if not isinstance(template, dict):
+                logger.error("[SUB] outbound_template должен быть объектом")
+                return text.encode("utf-8")
+
+            template_outbounds = template.get("outbounds", [])
+            if not isinstance(template_outbounds, list) or not all(
+                isinstance(item, dict) for item in template_outbounds
+            ):
+                logger.error("[SUB] outbound_template.outbounds должен быть списком объектов")
                 return text.encode("utf-8")
 
             try:
@@ -226,7 +238,10 @@ def modify_json_subscription(content: bytes) -> bytes:
                 return content
 
             if isinstance(subscription, list):
-                subscription.extend(append_configs)
+                subscription.extend(
+                    {**template, "outbounds": [outbound, *template_outbounds]}
+                    for outbound in append_outbounds
+                )
                 text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
 
         return text.encode("utf-8")

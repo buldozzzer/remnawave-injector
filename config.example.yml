@@ -95,5 +95,8 @@ subscription_modification:
         replace: '"address": "newip"'
 
     enabled_append: true
-    # Каждый элемент списка — полный объект конфигурации для клиента.
-    append_configs: []
+    # Общие поля конфига. Здесь можно задать и вспомогательные outbounds.
+    outbound_template:
+      outbounds: []
+    # Один объект подключения на каждый добавляемый конфиг.
+    append_outbounds: []
