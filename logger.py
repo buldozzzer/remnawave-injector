@@ -5,7 +5,7 @@ from pathlib import Path
 
 import structlog
 from structlog import configure, get_logger
-from structlog.dev import ConsoleRenderer, RichTracebackFormatter
+from structlog.dev import ConsoleRenderer
 from structlog.processors import (
     JSONRenderer,
     TimeStamper,
@@ -46,9 +46,7 @@ def setup_structlog(
         processors = shared_processors + [ProcessorFormatter.wrap_for_formatter]
     else:
         formatter = ProcessorFormatter(
-            processor=ConsoleRenderer(
-                colors=True, exception_formatter=RichTracebackFormatter()
-            )
+            processor=ConsoleRenderer(colors=True)
         )
         processors = shared_processors + [ProcessorFormatter.wrap_for_formatter]
 

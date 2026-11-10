@@ -51,7 +51,7 @@ subscription_modification:
 
   user_agent_exceptions:
     enabled: true
-    exclude:
+    exclude: []
 
     exclude_regex:
       - "clash-verge.*"
