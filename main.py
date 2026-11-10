@@ -238,9 +238,14 @@ def modify_json_subscription(content: bytes) -> bytes:
                 return content
 
             if isinstance(subscription, list):
+                remark = json_config.get("remark", "🇷🇺 Скорая помощь 🚑 #")
                 subscription.extend(
-                    {**template, "outbounds": [outbound, *template_outbounds]}
-                    for outbound in append_outbounds
+                    {
+                        **template,
+                        "remarks": f"{remark}{number}",
+                        "outbounds": [outbound, *template_outbounds],
+                    }
+                    for number, outbound in enumerate(append_outbounds, start=1)
                 )
                 text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
 

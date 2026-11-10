@@ -95,6 +95,7 @@ subscription_modification:
         replace: '"address": "newip"'
 
     enabled_append: true
+    remark: "🇷🇺 Скорая помощь 🚑 #"
     # Общие поля конфига. Здесь можно задать и вспомогательные outbounds.
     outbound_template:
       outbounds: []
