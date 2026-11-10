@@ -1,22 +1,22 @@
 # Remjector
-## Features
+## Возможности
 
-1. Modify Base64/Json sub for different clients (Remove/Replace/Append)
-2. Inject own html/js (I don't know why)
+1. Изменение подписок в форматах Base64 и JSON для разных клиентов.
+2. Добавление собственного HTML и JavaScript на страницу подписки.
 
-## Work scheme 
+## Схема работы
 
-`Reverse Proxy` <-> `Remjector` <-> `Remnawave Subscription Page`
+`Обратный прокси` ↔ `Remjector` ↔ `Страница подписки Remnawave`
 
-## Deploy
+## Развёртывание
 
-1. Create config
+1. Создайте файл конфигурации.
     ```
     cp ./config.example.yml ./config.yml
     ```
-2. Modify him
-3. Modify own reverse-proxy config (replace proxy path from `remnawave-sub-page` to `remjector`)
-4. Run
+2. Настройте параметры в `config.yml`.
+3. В настройках обратного прокси замените адрес сервиса `remnawave-sub-page` на `remjector`.
+4. Запустите контейнер.
     ```
     docker compose up -d
     ```
