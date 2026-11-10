@@ -208,8 +208,9 @@ def modify_json_subscription(content: bytes) -> bytes:
 
     try:
         text = content.decode("utf-8")
-        for rule in json_config.get("replacements", []):
-            text = text.replace(rule.get("search", ""), rule.get("replace", ""))
+        if json_config.get("enabled_replace", True):
+            for rule in json_config.get("replacements", []):
+                text = text.replace(rule.get("search", ""), rule.get("replace", ""))
 
         append_configs = json_config.get("append_configs", [])
         if json_config.get("enabled_append", True) and append_configs:

@@ -89,6 +89,7 @@ subscription_modification:
 
   json:
     enabled: false
+    enabled_replace: true
     replacements:
       - search: '"address": "oldip"'
         replace: '"address": "newip"'
