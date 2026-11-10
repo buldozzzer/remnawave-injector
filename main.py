@@ -52,7 +52,7 @@ ua_exceptions = sub_config.get("user_agent_exceptions", {})
 
 EXCLUDE_UA_ENABLED = ua_exceptions.get("enabled", True)
 EXCLUDE_UA_REGEXES = []
-EXCLUDE_UA_STRINGS = ua_exceptions.get("exclude", [])
+EXCLUDE_UA_STRINGS = ua_exceptions.get("exclude") or []
 
 for pattern in ua_exceptions.get("exclude_regex", []):
     try:
@@ -210,6 +210,24 @@ def modify_json_subscription(content: bytes) -> bytes:
         text = content.decode("utf-8")
         for rule in json_config.get("replacements", []):
             text = text.replace(rule.get("search", ""), rule.get("replace", ""))
+
+        append_configs = json_config.get("append_configs", [])
+        if json_config.get("enabled_append", True) and append_configs:
+            if not isinstance(append_configs, list) or not all(
+                isinstance(item, dict) for item in append_configs
+            ):
+                logger.error("[SUB] append_configs должен быть списком объектов")
+                return text.encode("utf-8")
+
+            try:
+                subscription = json.loads(text)
+            except json.JSONDecodeError:
+                return content
+
+            if isinstance(subscription, list):
+                subscription.extend(append_configs)
+                text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
+
         return text.encode("utf-8")
     except Exception as e:
         logger.error("Ошибка модификации JSON", error=str(e))

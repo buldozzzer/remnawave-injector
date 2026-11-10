@@ -92,3 +92,7 @@ subscription_modification:
     replacements:
       - search: '"address": "oldip"'
         replace: '"address": "newip"'
+
+    enabled_append: true
+    # Каждый элемент списка — полный объект конфигурации для клиента.
+    append_configs: []
