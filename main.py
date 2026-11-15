@@ -202,7 +202,7 @@ def modify_base64_subscription(content: bytes) -> bytes:
         return content
 
 
-def modify_json_subscription(content: bytes) -> bytes:
+def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
     if not json_config.get("enabled", False):
         return content
 
@@ -213,7 +213,14 @@ def modify_json_subscription(content: bytes) -> bytes:
                 text = text.replace(rule.get("search", ""), rule.get("replace", ""))
 
         append_outbounds = json_config.get("append_outbounds", [])
-        if json_config.get("enabled_append", True) and append_outbounds:
+        should_append = json_config.get("enabled_append", True) and append_outbounds
+        windows_removal = json_config.get("windows_key_removal", {})
+        remove_keys = windows_removal.get("keys", [])
+        should_remove = windows_removal.get("enabled", False) and remove_keys and re.search(
+            windows_removal.get("user_agent_regex", r"\bWindows\b"), user_agent, re.IGNORECASE
+        )
+
+        if should_append:
             if not isinstance(append_outbounds, list) or not all(
                 isinstance(item, dict) for item in append_outbounds
             ):
@@ -232,12 +239,16 @@ def modify_json_subscription(content: bytes) -> bytes:
                 logger.error("[SUB] outbound_template.outbounds должен быть списком объектов")
                 return text.encode("utf-8")
 
-            try:
-                subscription = json.loads(text)
-            except json.JSONDecodeError:
-                return content
+        if not should_append and not should_remove:
+            return text.encode("utf-8")
 
-            if isinstance(subscription, list):
+        try:
+            subscription = json.loads(text)
+        except json.JSONDecodeError:
+            return content
+
+        if isinstance(subscription, list):
+            if should_append:
                 remark = json_config.get("remark", "🇷🇺 Скорая помощь 🚑 #")
                 subscription.extend(
                     {
@@ -247,7 +258,18 @@ def modify_json_subscription(content: bytes) -> bytes:
                     }
                     for number, outbound in enumerate(append_outbounds, start=1)
                 )
-                text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
+
+            if should_remove:
+                subscription = [
+                    {key: value for key, value in profile.items() if key not in remove_keys}
+                    if isinstance(profile, dict) else profile
+                    for profile in subscription
+                ]
+            text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
+        elif should_remove and isinstance(subscription, dict):
+            for key in remove_keys:
+                subscription.pop(key, None)
+            text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
 
         return text.encode("utf-8")
     except Exception as e:
@@ -286,7 +308,9 @@ def modify_subscription(flow: http.HTTPFlow):
         return
 
     if "application/json" in content_type:
-        flow.response.content = modify_json_subscription(flow.response.content)
+        flow.response.content = modify_json_subscription(
+            flow.response.content, flow.request.headers.get("User-Agent", "")
+        )
         logger.info(
             "[SUB] JSON модифицирована",
             orig_len=original_size,

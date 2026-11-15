@@ -89,6 +89,11 @@ subscription_modification:
 
   json:
     enabled: false
+    windows_key_removal:
+      enabled: false
+      user_agent_regex: '\bWindows\b'
+      keys: []
+
     enabled_replace: true
     replacements:
       - search: '"address": "oldip"'
