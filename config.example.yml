@@ -89,8 +89,10 @@ subscription_modification:
 
   json:
     enabled: false
-    windows_key_removal:
+    key_removal:
       enabled: false
+      user_agent_regexes:
+        - '\bWindows\b'
       outbound_keys: []
 
     enabled_replace: true

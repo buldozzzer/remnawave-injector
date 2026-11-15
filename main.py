@@ -233,12 +233,15 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
 
         append_outbounds = json_config.get("append_outbounds", [])
         should_append = json_config.get("enabled_append", True) and append_outbounds
-        windows_removal = json_config.get("windows_key_removal", {})
-        outbound_keys = windows_removal.get("outbound_keys", [])
+        key_removal = json_config.get("key_removal", {})
+        outbound_keys = key_removal.get("outbound_keys", [])
         should_remove = (
-            windows_removal.get("enabled", False)
+            key_removal.get("enabled", False)
             and outbound_keys
-            and re.search(r"\bWindows\b", user_agent, re.IGNORECASE)
+            and any(
+                re.search(pattern, user_agent, re.IGNORECASE)
+                for pattern in key_removal.get("user_agent_regexes", [r"\bWindows\b"])
+            )
         )
 
         if should_append:
