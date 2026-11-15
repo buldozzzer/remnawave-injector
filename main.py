@@ -5,6 +5,7 @@ import re
 
 import base64
 import json
+from copy import deepcopy
 
 from mitmproxy import http
 from mitmproxy.tools.main import mitmdump
@@ -202,6 +203,42 @@ def modify_base64_subscription(content: bytes) -> bytes:
         return content
 
 
+def remove_nested_json_keys(value, keys):
+    if isinstance(value, dict):
+        for key in keys:
+            value.pop(key, None)
+        for child in value.values():
+            remove_nested_json_keys(child, keys)
+    elif isinstance(value, list):
+        for child in value:
+            remove_nested_json_keys(child, keys)
+
+
+def remove_json_keys(profile, keys, paths, inbound_keys):
+    if not isinstance(profile, dict):
+        return
+
+    for path in paths:
+        target = profile
+        for segment in path[:-1]:
+            if isinstance(target, dict) and isinstance(segment, str):
+                target = target.get(segment)
+            elif isinstance(target, list) and type(segment) is int and 0 <= segment < len(target):
+                target = target[segment]
+            else:
+                target = None
+                break
+        if path and isinstance(path[-1], str) and isinstance(target, dict):
+            target.pop(path[-1], None)
+
+    for key in keys:
+        profile.pop(key, None)
+
+    inbounds = profile.get("inbounds")
+    if inbound_keys and isinstance(inbounds, list):
+        remove_nested_json_keys(inbounds, inbound_keys)
+
+
 def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
     if not json_config.get("enabled", False):
         return content
@@ -216,8 +253,14 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
         should_append = json_config.get("enabled_append", True) and append_outbounds
         windows_removal = json_config.get("windows_key_removal", {})
         remove_keys = windows_removal.get("keys", [])
-        should_remove = windows_removal.get("enabled", False) and remove_keys and re.search(
-            windows_removal.get("user_agent_regex", r"\bWindows\b"), user_agent, re.IGNORECASE
+        remove_paths = windows_removal.get("paths", [])
+        inbound_keys = windows_removal.get("inbound_keys", [])
+        should_remove = (
+            windows_removal.get("enabled", False)
+            and (remove_keys or remove_paths or inbound_keys)
+            and re.search(
+                windows_removal.get("user_agent_regex", r"\bWindows\b"), user_agent, re.IGNORECASE
+            )
         )
 
         if should_append:
@@ -249,6 +292,7 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
 
         if isinstance(subscription, list):
             if should_append:
+                first_added = len(subscription)
                 remark = json_config.get("remark", "🇷🇺 Скорая помощь 🚑 #")
                 subscription.extend(
                     {
@@ -258,17 +302,15 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
                     }
                     for number, outbound in enumerate(append_outbounds, start=1)
                 )
+                if should_remove:
+                    subscription[first_added:] = deepcopy(subscription[first_added:])
 
             if should_remove:
-                subscription = [
-                    {key: value for key, value in profile.items() if key not in remove_keys}
-                    if isinstance(profile, dict) else profile
-                    for profile in subscription
-                ]
+                for profile in subscription:
+                    remove_json_keys(profile, remove_keys, remove_paths, inbound_keys)
             text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
         elif should_remove and isinstance(subscription, dict):
-            for key in remove_keys:
-                subscription.pop(key, None)
+            remove_json_keys(subscription, remove_keys, remove_paths, inbound_keys)
             text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
 
         return text.encode("utf-8")

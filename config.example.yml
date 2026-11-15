@@ -93,6 +93,9 @@ subscription_modification:
       enabled: false
       user_agent_regex: '\bWindows\b'
       keys: []
+      inbound_keys: []
+      paths: []
+      # Пример пути: ["outbounds", 0, "streamSettings", "finalmask"]
 
     enabled_replace: true
     replacements:
