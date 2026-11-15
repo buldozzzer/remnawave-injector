@@ -214,30 +214,11 @@ def remove_nested_json_keys(value, keys):
             remove_nested_json_keys(child, keys)
 
 
-def remove_json_keys(profile, keys, paths, nested_keys):
-    if not isinstance(profile, dict):
-        return
-
-    for path in paths:
-        target = profile
-        for segment in path[:-1]:
-            if isinstance(target, dict) and isinstance(segment, str):
-                target = target.get(segment)
-            elif isinstance(target, list) and type(segment) is int and 0 <= segment < len(target):
-                target = target[segment]
-            else:
-                target = None
-                break
-        if path and isinstance(path[-1], str) and isinstance(target, dict):
-            target.pop(path[-1], None)
-
-    for key in keys:
-        profile.pop(key, None)
-
-    for field, field_keys in nested_keys.items():
-        items = profile.get(field)
-        if field_keys and isinstance(items, list):
-            remove_nested_json_keys(items, field_keys)
+def remove_outbound_keys(profile, keys):
+    if isinstance(profile, dict):
+        outbounds = profile.get("outbounds")
+        if isinstance(outbounds, list):
+            remove_nested_json_keys(outbounds, keys)
 
 
 def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
@@ -253,18 +234,11 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
         append_outbounds = json_config.get("append_outbounds", [])
         should_append = json_config.get("enabled_append", True) and append_outbounds
         windows_removal = json_config.get("windows_key_removal", {})
-        remove_keys = windows_removal.get("keys", [])
-        remove_paths = windows_removal.get("paths", [])
-        nested_keys = {
-            "inbounds": windows_removal.get("inbound_keys", []),
-            "outbounds": windows_removal.get("outbound_keys", []),
-        }
+        outbound_keys = windows_removal.get("outbound_keys", [])
         should_remove = (
             windows_removal.get("enabled", False)
-            and (remove_keys or remove_paths or any(nested_keys.values()))
-            and re.search(
-                windows_removal.get("user_agent_regex", r"\bWindows\b"), user_agent, re.IGNORECASE
-            )
+            and outbound_keys
+            and re.search(r"\bWindows\b", user_agent, re.IGNORECASE)
         )
 
         if should_append:
@@ -311,10 +285,10 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
 
             if should_remove:
                 for profile in subscription:
-                    remove_json_keys(profile, remove_keys, remove_paths, nested_keys)
+                    remove_outbound_keys(profile, outbound_keys)
             text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
         elif should_remove and isinstance(subscription, dict):
-            remove_json_keys(subscription, remove_keys, remove_paths, nested_keys)
+            remove_outbound_keys(subscription, outbound_keys)
             text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
 
         return text.encode("utf-8")
