@@ -214,7 +214,7 @@ def remove_nested_json_keys(value, keys):
             remove_nested_json_keys(child, keys)
 
 
-def remove_json_keys(profile, keys, paths, inbound_keys):
+def remove_json_keys(profile, keys, paths, nested_keys):
     if not isinstance(profile, dict):
         return
 
@@ -234,9 +234,10 @@ def remove_json_keys(profile, keys, paths, inbound_keys):
     for key in keys:
         profile.pop(key, None)
 
-    inbounds = profile.get("inbounds")
-    if inbound_keys and isinstance(inbounds, list):
-        remove_nested_json_keys(inbounds, inbound_keys)
+    for field, field_keys in nested_keys.items():
+        items = profile.get(field)
+        if field_keys and isinstance(items, list):
+            remove_nested_json_keys(items, field_keys)
 
 
 def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
@@ -254,10 +255,13 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
         windows_removal = json_config.get("windows_key_removal", {})
         remove_keys = windows_removal.get("keys", [])
         remove_paths = windows_removal.get("paths", [])
-        inbound_keys = windows_removal.get("inbound_keys", [])
+        nested_keys = {
+            "inbounds": windows_removal.get("inbound_keys", []),
+            "outbounds": windows_removal.get("outbound_keys", []),
+        }
         should_remove = (
             windows_removal.get("enabled", False)
-            and (remove_keys or remove_paths or inbound_keys)
+            and (remove_keys or remove_paths or any(nested_keys.values()))
             and re.search(
                 windows_removal.get("user_agent_regex", r"\bWindows\b"), user_agent, re.IGNORECASE
             )
@@ -307,10 +311,10 @@ def modify_json_subscription(content: bytes, user_agent: str = "") -> bytes:
 
             if should_remove:
                 for profile in subscription:
-                    remove_json_keys(profile, remove_keys, remove_paths, inbound_keys)
+                    remove_json_keys(profile, remove_keys, remove_paths, nested_keys)
             text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
         elif should_remove and isinstance(subscription, dict):
-            remove_json_keys(subscription, remove_keys, remove_paths, inbound_keys)
+            remove_json_keys(subscription, remove_keys, remove_paths, nested_keys)
             text = json.dumps(subscription, ensure_ascii=False, allow_nan=False)
 
         return text.encode("utf-8")

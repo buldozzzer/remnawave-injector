@@ -83,6 +83,16 @@ inbound_keys:
 
 Поиск проходит по вложенным объектам и массивам внутри `inbounds`.
 
+Для всех элементов `outbounds` каждого профиля используйте
+`windows_key_removal.outbound_keys`:
+
+```yaml
+outbound_keys:
+  - "finalmask"
+```
+
+Поиск проходит и по вложенным объектам и массивам, включая `streamSettings`.
+
 По умолчанию правило ищет слово `Windows` в заголовке `User-Agent` без учёта
 регистра. Если у клиента другой заголовок, задайте регулярное выражение
 `user_agent_regex` в секции `windows_key_removal`. Клиенты из
